@@ -1,0 +1,36 @@
+{
+  "projects": [
+    {
+      "name": "Website Redesign",
+      "owner": "Aisha Khan",
+      "status": "green",
+      "recentActivity": "Deployed new landing page",
+      "priority": "High",
+      "updated": "2026-06-12T06:00:00Z"
+    },
+    {
+      "name": "Mobile Payments",
+      "owner": "Miguel Santos",
+      "status": "yellow",
+      "recentActivity": "API integration in progress",
+      "priority": "Medium",
+      "updated": "2026-06-11T15:30:00Z"
+    },
+    {
+      "name": "Data Pipeline Upgrade",
+      "owner": "Li Wei",
+      "status": "red",
+      "recentActivity": "Critical incident: data lag detected",
+      "priority": "High",
+      "updated": "2026-06-12T02:45:00Z"
+    },
+    {
+      "name": "Onboarding Docs",
+      "owner": "Sara Johnson",
+      "status": "green",
+      "recentActivity": "Updated contributor guide",
+      "priority": "Low",
+      "updated": "2026-06-10T09:20:00Z"
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Project Pulse</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header role="banner">
+    <div class="container dashboard__header" id="dashboard-header">
+      <div class="dashboard__title">
+        <h1>Project Pulse</h1>
+        <div class="dashboard__subtitle muted">Quick view of active projects</div>
+      </div>
+      <div class="dashboard__actions">
+        <button class="btn primary" id="refreshBtn" title="Refresh projects">Refresh</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" role="main" class="container dashboard" aria-labelledby="dashboard-title">
+    <h2 id="dashboard-title" class="sr-only">Project Dashboard</h2>
+
+    <div id="status" role="status" aria-live="polite" class="muted">Loading projects…</div>
+
+    <section id="projects" class="project-list" role="list" aria-label="Projects list" tabindex="-1">
+      <!-- Project cards will be inserted here -->
+    </section>
+
+    <div id="error" role="alert" aria-live="assertive" hidden class="error-message"></div>
+  </main>
+
+  <footer role="contentinfo" class="container">
+    <small class="muted">Project Pulse • Lightweight team dashboard</small>
+  </footer>
+
+  <script>
+    (function () {
+      const DATA_PATH = './project-data.json';
+      const statusEl = document.getElementById('status');
+      const projectsEl = document.getElementById('projects');
+      const errorEl = document.getElementById('error');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      function clearStatus() {
+        statusEl.textContent = '';
+      }
+
+      function showError(message) {
+        clearStatus();
+        projectsEl.innerHTML = '';
+        errorEl.hidden = false;
+        errorEl.textContent = 'Unable to load projects — ' + message;
+        errorEl.focus();
+      }
+
+      function createTextElement(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        el.textContent = text;
+        return el;
+      }
+
+      function statusToBadgeClass(status) {
+        switch ((status||'').toLowerCase()) {
+          case 'green': return 'status-badge--complete';
+          case 'yellow': return 'status-badge--paused';
+          case 'red': return 'status-badge--blocked';
+          default: return 'status-badge--paused';
+        }
+      }
+
+      function priorityClass(priority) {
+        if (!priority) return '';
+        const p = priority.toLowerCase();
+        if (p === 'high') return 'priority--high';
+        if (p === 'medium') return 'priority--medium';
+        return 'priority--low';
+      }
+
+      function renderProjectCard(p) {
+        const card = document.createElement('article');
+        card.className = 'project-card';
+        card.setAttribute('role', 'listitem');
+        card.tabIndex = 0;
+
+        const header = document.createElement('div');
+        header.className = 'project-card__header';
+
+        const titleWrap = document.createElement('div');
+        titleWrap.className = 'project-card__title';
+        const title = createTextElement('div', 'name', p.name || 'Untitled project');
+        const meta = createTextElement('div', 'meta', (p.owner ? 'Owner: ' + p.owner : 'Owner: —'));
+        titleWrap.appendChild(title);
+        titleWrap.appendChild(meta);
+
+        header.appendChild(titleWrap);
+
+        const priority = document.createElement('div');
+        priority.className = 'priority ' + priorityClass(p.priority);
+        priority.textContent = p.priority || '—';
+        header.appendChild(priority);
+
+        card.appendChild(header);
+
+        const divider = document.createElement('div');
+        divider.className = 'project-card__divider';
+        card.appendChild(divider);
+
+        const statusWrap = document.createElement('div');
+        statusWrap.className = 'project-card__content';
+
+        const statusBadge = document.createElement('div');
+        statusBadge.className = 'status-badge ' + statusToBadgeClass(p.status);
+        statusBadge.setAttribute('aria-hidden','true');
+        statusBadge.textContent = (p.status || 'unknown').toUpperCase();
+
+        const recent = createTextElement('div', 'recent-activity', '');
+        const recentStrong = createTextElement('strong', '', 'Recent: ');
+        const recentText = document.createTextNode(p.recentActivity || 'No recent activity');
+        recent.appendChild(recentStrong);
+        recent.appendChild(recentText);
+
+        statusWrap.appendChild(statusBadge);
+        statusWrap.appendChild(recent);
+
+        card.appendChild(statusWrap);
+
+        const footer = document.createElement('div');
+        footer.className = 'project-card__footer';
+        const ownerChip = document.createElement('div');
+        ownerChip.className = 'chip';
+        ownerChip.textContent = p.owner || '—';
+        const updated = createTextElement('div', 'muted', '');
+        updated.textContent = p.updated ? ('Updated: ' + new Date(p.updated).toLocaleString()) : '';
+
+        footer.appendChild(ownerChip);
+        footer.appendChild(updated);
+
+        card.appendChild(footer);
+
+        return card;
+      }
+
+      async function loadProjects() {
+        try {
+          const resp = await fetch(DATA_PATH, { cache: 'no-store' });
+          if (!resp.ok) {
+            throw new Error('HTTP ' + resp.status + ' — ' + resp.statusText);
+          }
+
+          let data;
+          try {
+            data = await resp.json();
+          } catch (jsonErr) {
+            throw new Error('Malformed JSON in ' + DATA_PATH);
+          }
+
+          if (!data || !Array.isArray(data.projects)) {
+            throw new Error('Project data missing or in wrong format.');
+          }
+
+          clearStatus();
+          projectsEl.innerHTML = '';
+          errorEl.hidden = true;
+
+          if (data.projects.length === 0) {
+            statusEl.textContent = 'No projects to show.';
+            return;
+          }
+
+          statusEl.textContent = data.projects.length + (data.projects.length === 1 ? ' project' : ' projects');
+
+          data.projects.forEach(p => {
+            const card = renderProjectCard(p);
+            projectsEl.appendChild(card);
+          });
+
+        } catch (err) {
+          showError(err.message || 'Unknown error');
+        }
+      }
+
+      refreshBtn.addEventListener('click', () => {
+        statusEl.textContent = 'Refreshing…';
+        loadProjects();
+      });
+
+      function clearStatus() { statusEl.textContent = ''; }
+
+      loadProjects();
+    })();
+  </script>
+</body>
+</html>
